@@ -231,8 +231,15 @@ class FeetechMotorsBus(MotorsBus):
 
     @property
     def is_calibrated(self) -> bool:
+        # uncomment the following line to write the calibration to the motors if you get the error below
+        # and did the calibration already
+        # self.write_calibration(self.calibration)
         motors_calibration = self.read_calibration()
         if set(motors_calibration) != set(self.calibration):
+            raise RuntimeError(
+                "The motors calibration does not match the motors in the bus. "
+                "Make sure to call 'read_calibration' before 'is_calibrated'."
+            )
             return False
 
         same_ranges = all(
