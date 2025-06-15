@@ -164,10 +164,14 @@ class SO101Follower(Robot):
         # Capture images from cameras
         for cam_key, cam in self.cameras.items():
             start = time.perf_counter()
-            obs_dict[cam_key] = cam.async_read()
+            obs = cam.async_read()
+            if isinstance(obs, tuple):
+                assert len(obs) == 2
+                obs_dict[cam_key], obs_dict[cam_key + "_depth"] = obs
+            else:
+                obs_dict[cam_key] = obs
             dt_ms = (time.perf_counter() - start) * 1e3
             logger.debug(f"{self} read {cam_key}: {dt_ms:.1f}ms")
-
         return obs_dict
 
     def send_action(self, action: dict[str, Any]) -> dict[str, Any]:

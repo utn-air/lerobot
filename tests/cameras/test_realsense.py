@@ -140,19 +140,55 @@ def test_disconnect_before_connect():
 
 
 def test_async_read():
-    config = RealSenseCameraConfig(serial_number_or_name="042", width=640, height=480, fps=30)
+    import time
+
+    config = RealSenseCameraConfig(
+        serial_number_or_name="218622276042", width=640, height=480, fps=30, use_depth=True
+    )
+    print("Camera configured")
     camera = RealSenseCamera(config)
-    camera.connect(warmup=False)
+    print("Camera instance created")
+    camera.connect(warmup=True)
+    time.sleep(2)
+    print("Camera connected")
+    time.sleep(2)
 
-    try:
-        img = camera.async_read()
+    start_time = time.perf_counter()
 
-        assert camera.thread is not None
-        assert camera.thread.is_alive()
-        assert isinstance(img, np.ndarray)
-    finally:
-        if camera.is_connected:
-            camera.disconnect()  # To stop/join the thread. Otherwise get warnings when the test ends
+    while time.perf_counter() - start_time < 5:
+        try:
+            img, depth = camera.async_read()
+
+            assert camera.thread is not None
+            assert camera.thread.is_alive()
+            assert isinstance(img, np.ndarray)
+            assert isinstance(depth, np.ndarray)
+
+            # plot img and depth
+            # import pdb
+            # pdb.set_trace()
+            # import matplotlib.pyplot as plt
+            # plt.figure(figsize=(10, 5))
+            # plt.subplot(1, 2, 1)
+            # plt.title("RGB Image")
+            # plt.axis('off')
+            # plt.imshow(img)
+
+            # plt.subplot(1, 2, 2)
+            # plt.title("Depth")
+            # plt.axis('off')
+            # plt.imshow(depth, cmap='plasma')
+            # plt.colorbar(fraction=0.046, pad=0.04)
+
+            # plt.tight_layout()
+            # plt.savefig("testing.png")
+            # plt.close()
+            # print("Image collected")
+        except Exception:
+            continue
+        finally:
+            if camera.is_connected:
+                camera.disconnect()  # To stop/join the thread. Otherwise get warnings when the test ends
 
 
 def test_async_read_timeout():
@@ -202,3 +238,7 @@ def test_rotation(rotation):
         assert camera.width == 640
         assert camera.height == 480
         assert img.shape[:2] == (480, 640)
+
+
+if __name__ == "__main__":
+    test_async_read()

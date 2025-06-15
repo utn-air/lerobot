@@ -133,6 +133,7 @@ class RealSenseCamera(Camera):
         self.stop_event: Event | None = None
         self.frame_lock: Lock = Lock()
         self.latest_frame: np.ndarray | None = None
+        self.latest_depth_frame: np.ndarray | None = None
         self.new_frame_event: Event = Event()
 
         self.rotation: int | None = get_cv2_rotation(config.rotation)
@@ -451,11 +452,15 @@ class RealSenseCamera(Camera):
         Stops on DeviceNotConnectedError, logs other errors and continues.
         """
         while not self.stop_event.is_set():
-            try:
+            try:# For debugging purposes, remove in production
                 color_image = self.read(timeout_ms=500)
+                if self.use_depth:
+                    depth_image = self.read_depth(timeout_ms=500)
 
                 with self.frame_lock:
                     self.latest_frame = color_image
+                    if self.use_depth:
+                        self.latest_depth_frame = depth_image
                 self.new_frame_event.set()
 
             except DeviceNotConnectedError:
@@ -487,7 +492,7 @@ class RealSenseCamera(Camera):
         self.stop_event = None
 
     # NOTE(Steven): Missing implementation for depth for now
-    def async_read(self, timeout_ms: float = 200) -> np.ndarray:
+    def async_read(self, timeout_ms: float = 200) -> tuple[np.ndarray, np.ndarray]:
         """
         Reads the latest available frame data (color) asynchronously.
 
@@ -523,12 +528,16 @@ class RealSenseCamera(Camera):
 
         with self.frame_lock:
             frame = self.latest_frame
+            depth_frame = self.latest_depth_frame if self.use_depth else None
             self.new_frame_event.clear()
 
         if frame is None:
             raise RuntimeError(f"Internal error: Event set but no frame available for {self}.")
 
-        return frame
+        if depth_frame is None and self.use_depth is True:
+            raise RuntimeError(f"Internal error: Event set but no DEPTH frame available for {self}.")
+
+        return frame, depth_frame
 
     def disconnect(self):
         """
