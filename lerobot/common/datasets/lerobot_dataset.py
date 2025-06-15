@@ -774,6 +774,11 @@ class LeRobotDataset(torch.utils.data.Dataset):
             if isinstance(frame[name], torch.Tensor):
                 frame[name] = frame[name].numpy()
 
+        for key in frame.keys():
+            if "_depth" in key:
+                self.features[key] = self.features[key[:-6]].copy()
+                self.episode_buffer[key] = self.episode_buffer[key[:-6]].copy()
+
         validate_frame(frame, self.features)
 
         if self.episode_buffer is None:

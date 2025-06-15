@@ -436,6 +436,11 @@ def build_dataset_frame(
             frame[key] = np.array([values[name] for name in ft["names"]], dtype=np.float32)
         elif ft["dtype"] in ["image", "video"]:
             frame[key] = values[key.removeprefix(f"{prefix}.images.")]
+            if key.removeprefix(f"{prefix}.images.")+"_depth" in values.keys():
+                import pdb
+                pdb.set_trace()
+                frame[key+"_depth"] = np.repeat(values[key.removeprefix(f"{prefix}.images.")+"_depth"][:,:,np.newaxis], 3, axis=2)
+                            
 
     return frame
 
