@@ -437,9 +437,7 @@ def build_dataset_frame(
         elif ft["dtype"] in ["image", "video"]:
             frame[key] = values[key.removeprefix(f"{prefix}.images.")]
             if key.removeprefix(f"{prefix}.images.")+"_depth" in values.keys():
-                import pdb
-                pdb.set_trace()
-                frame[key+"_depth"] = np.repeat(values[key.removeprefix(f"{prefix}.images.")+"_depth"][:,:,np.newaxis], 3, axis=2)
+                frame[key+"_depth"] = values[key.removeprefix(f"{prefix}.images.")+"_depth"]
                             
 
     return frame

@@ -778,6 +778,18 @@ class LeRobotDataset(torch.utils.data.Dataset):
             if "_depth" in key:
                 self.features[key] = self.features[key[:-6]].copy()
                 self.episode_buffer[key] = self.episode_buffer[key[:-6]].copy()
+                if len(frame[key].shape) == 2:
+                    low  =  ( frame[key]        & 0x00FF ).astype(np.uint8)
+                    high = ((frame[key] >> 8)  & 0x00FF ).astype(np.uint8)
+
+                    # 3. Stack into an RGB image where:
+                    #    R = high byte, G = low byte, B = zero (or whatever you like)
+                    rgb = np.zeros((frame[key].shape[0], frame[key].shape[1], 3), dtype=np.uint8)
+                    rgb[..., 0] = high   # R channel
+                    rgb[..., 1] = low    # G channel
+                    # rgb[..., 2] is B and stays 0
+
+                    frame[key] = rgb
 
         validate_frame(frame, self.features)
 

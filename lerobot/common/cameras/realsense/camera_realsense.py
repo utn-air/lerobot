@@ -344,7 +344,7 @@ class RealSenseCamera(Camera):
             raise RuntimeError(f"{self} read_depth failed (status={ret}).")
 
         depth_frame = frame.get_depth_frame()
-        depth_map = np.asanyarray(depth_frame.get_data()).astype(np.uint8)
+        depth_map = np.asanyarray(depth_frame.get_data())
 
         depth_map_processed = self._postprocess_image(depth_map, depth_frame=True)
 
