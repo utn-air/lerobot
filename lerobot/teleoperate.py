@@ -37,6 +37,11 @@ from pprint import pformat
 
 import draccus
 import numpy as np
+from rcs import sim
+import rcs
+from rcs.envs.base import ControlMode
+from rcs.envs.so101_creators import SO101SimEnvCreator
+from rcs.envs.utils import default_fr3_sim_gripper_cfg
 import rerun as rr
 
 from lerobot.common.cameras.opencv.configuration_opencv import OpenCVCameraConfig  # noqa: F401
@@ -73,13 +78,14 @@ class TeleoperateConfig:
 
 
 def teleop_loop(
-    teleop: Teleoperator, robot: Robot, fps: int, display_data: bool = False, duration: float | None = None
+    teleop: Teleoperator, robot: Robot, fps: int, display_data: bool = False, duration: float | None = None, twin: sim.SimRobot | None = None
 ):
     display_len = max(len(key) for key in robot.action_features)
     start = time.perf_counter()
     while True:
         loop_start = time.perf_counter()
         action = teleop.get_action()
+        # breakpoint()
         if display_data:
             observation = robot.get_observation()
             for obs, val in observation.items():
@@ -92,6 +98,18 @@ def teleop_loop(
                     rr.log(f"action_{act}", rr.Scalar(val))
 
         robot.send_action(action)
+            # "shoulder_pan.pos": q[0],
+            # "shoulder_lift.pos": q[1],
+            # "elbow_flex.pos": q[2],
+            # "wrist_flex.pos": q[3],
+            # "wrist_roll.pos": q[4],
+        act = {"gripper": action["gripper.pos"]/100, "joints": [action["shoulder_pan.pos"],
+                                                            action["shoulder_lift.pos"],
+                                                            action["elbow_flex.pos"],
+                                                            action["wrist_flex.pos"],
+                                                            action["wrist_roll.pos"]]}
+        twin.step(act)
+        # breakpoint()
         dt_s = time.perf_counter() - loop_start
         busy_wait(1 / fps - dt_s)
 
@@ -119,11 +137,29 @@ def teleoperate(cfg: TeleoperateConfig):
     teleop = make_teleoperator_from_config(cfg.teleop)
     robot = make_robot_from_config(cfg.robot)
 
+
+    factory = SO101SimEnvCreator()
+    cfg_ = sim.SimRobotConfig()
+    cfg_.robot_type = rcs.common.RobotType.SO101
+    env_rel = factory(
+        control_mode=ControlMode.JOINTS,
+        urdf_path="/home/tobi/coding/lerobot/so101_new_calib.urdf",
+        robot_cfg=cfg_,
+        collision_guard=False,
+        mjcf = "/home/tobi/coding/lerobot/SO-ARM100/Simulation/SO101/scene.xml",
+        gripper_cfg=default_fr3_sim_gripper_cfg(),
+        # camera_set_cfg=default_mujoco_cameraset_cfg(),
+        max_relative_movement=None,
+        # max_relative_movement=0.5,
+        # relative_to=RelativeTo.CONFIGURED_ORIGIN,
+    )
+    env_rel.get_wrapper_attr("sim").open_gui()
+
     teleop.connect()
     robot.connect()
 
     try:
-        teleop_loop(teleop, robot, cfg.fps, display_data=cfg.display_data, duration=cfg.teleop_time_s)
+        teleop_loop(teleop, robot, cfg.fps, display_data=cfg.display_data, duration=cfg.teleop_time_s, twin=env_rel)
     except KeyboardInterrupt:
         pass
     finally:
